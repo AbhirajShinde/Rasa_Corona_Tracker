@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rasa Chatbot</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png')}}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .chat-sign-button {
@@ -22,6 +22,10 @@
         }
         #chat-widget {
             max-height: 500px;
+        }
+        .chatbot-button {
+            margin: 5px 0;
+            width: 100%;
         }
     </style>
 </head>
@@ -61,16 +65,14 @@
             }
 
             function appendBotButtons(buttons) {
-                let buttonGroup = $('<div class="btn-group mt-2" role="group"></div>');
                 buttons.forEach(button => {
-                    let buttonElement = $('<button type="button" class="btn btn-secondary"></button>')
+                    let buttonElement = $('<button type="button" class="btn btn-secondary chatbot-button"></button>')
                         .text(button.title)
                         .click(function() {
                             handleUserMessage(button.payload, button.title);
                         });
-                    buttonGroup.append(buttonElement);
+                    $("#chat-widget-messages").append(buttonElement);
                 });
-                $("#chat-widget-messages").append(buttonGroup);
                 scrollToBottom();
                 adjustChatboxSize();
             }
