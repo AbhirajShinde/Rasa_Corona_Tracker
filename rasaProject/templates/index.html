@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rasa Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png')}}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .chat-sign-button {
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chatbox-messages {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #chat-widget {
+            max-height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to My Chatbot</h1>
+    </div>
+    
+    <!-- ChatBox -->
+    <div id="chat-widget" class="card position-fixed shadow d-none" style="bottom: 100px; right: 20px; width: 300px;">
+        <div class="card-header bg-primary text-white">
+            ChatBot
+            <button id="chat-widget-close-button" type="button" class="btn-close float-end" aria-label="Close"></button>
+        </div>
+        <div class="card-body chatbox-messages" id="chat-widget-messages">
+            <!-- Chat messages will be appended here -->
+        </div>
+        <div class="card-footer">
+            <input type="text" class="form-control" id="chat-widget-input" placeholder="Type your message...">
+        </div>
+    </div>
+
+    <!-- Chat Widget Button -->
+    <button id="chat-widget-button" type="button" class="btn btn-primary rounded-circle position-fixed chat-sign-button" style="bottom: 20px; right: 20px;">
+        <i class="bi bi-chat-dots"></i> <!-- Optional: Add an icon inside the button -->
+    </button>
+
+    <!-- Bootstrap Icons (optional) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+
+    <script>
+        $(document).ready(function(){
+            function appendBotMessage(content) {
+                $("#chat-widget-messages").append("<div><strong>Bot:</strong> " + content + "</div>");
+                scrollToBottom();
+                adjustChatboxSize();
+            }
+
+            function appendBotButtons(buttons) {
+                let buttonGroup = $('<div class="btn-group mt-2" role="group"></div>');
+                buttons.forEach(button => {
+                    let buttonElement = $('<button type="button" class="btn btn-secondary"></button>')
+                        .text(button.title)
+                        .click(function() {
+                            handleUserMessage(button.payload, button.title);
+                        });
+                    buttonGroup.append(buttonElement);
+                });
+                $("#chat-widget-messages").append(buttonGroup);
+                scrollToBottom();
+                adjustChatboxSize();
+            }
+
+            function handleUserMessage(userMessage, userText = null) {
+                if (userText) {
+                    $("#chat-widget-messages").append("<div><strong>You:</strong> " + userText + "</div>");
+                } else {
+                    $("#chat-widget-messages").append("<div><strong>You:</strong> " + userMessage + "</div>");
+                }
+                scrollToBottom();
+                adjustChatboxSize();
+
+                // Send user message to the server and get bot's response
+                $.ajax({
+                    type: "POST",
+                    url: "/webhook",
+                    contentType: "application/json",
+                    data: JSON.stringify({ message: userMessage }),
+                    success: function(data) {
+                        let responses = data.responses;
+                        responses.forEach(response => {
+                            if (response.type === 'text') {
+                                appendBotMessage(response.content);
+                            } else if (response.type === 'image') {
+                                $("#chat-widget-messages").append("<div><strong>Bot:</strong><br><img src='" + response.content + "' alt='Bot image' style='max-width: 100%;'></div>");
+                                scrollToBottom();
+                                adjustChatboxSize();
+                            } else if (response.type === 'buttons') {
+                                appendBotButtons(response.buttons);
+                            }
+                        });
+                    },
+                    error: function() {
+                        appendBotMessage("Sorry, something went wrong. Please try again.");
+                    }
+                });
+            }
+
+            function scrollToBottom() {
+                let chatMessages = $("#chat-widget-messages");
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            }
+
+            function adjustChatboxSize() {
+                let chatMessages = $("#chat-widget-messages");
+                let chatWidget = $("#chat-widget");
+
+                if (chatMessages[0].scrollHeight > 400) {
+                    chatMessages.css('max-height', '400px');
+                    chatWidget.css('max-height', '500px');
+                } else {
+                    chatMessages.css('max-height', '');
+                    chatWidget.css('max-height', '');
+                }
+            }
+
+            $("#chat-widget-button").click(function(){
+                $("#chat-widget").toggleClass("d-none");
+                if (!$("#chat-widget").hasClass("d-none")) {
+                    sendInitialMessage();
+                }
+            });
+            $("#chat-widget-close-button").click(function(){
+                $("#chat-widget").addClass("d-none");
+            });
+
+            // Handle user input in the chatbox
+            $("#chat-widget-input").keypress(function(event){
+                if(event.which == 13){
+                    let userMessage = $("#chat-widget-input").val().trim();
+                    if(userMessage) {
+                        $("#chat-widget-input").val("");
+                        handleUserMessage(userMessage);
+                    }
+                }
+            });
+
+            function sendInitialMessage() {
+                // Send initial greeting message to the server when the chat widget is opened
+                $.ajax({
+                    type: "POST",
+                    url: "/webhook",
+                    contentType: "application/json",
+                    data: JSON.stringify({ message: "Hey" }),
+                    success: function(data) {
+                        let responses = data.responses;
+                        responses.forEach(response => {
+                            if (response.type === 'text') {
+                                appendBotMessage(response.content);
+                            } else if (response.type === 'image') {
+                                $("#chat-widget-messages").append("<div><strong>Bot:</strong><br><img src='" + response.content + "' alt='Bot image' style='max-width: 100%;'></div>");
+                                scrollToBottom();
+                                adjustChatboxSize();
+                            } else if (response.type === 'buttons') {
+                                appendBotButtons(response.buttons);
+                            }
+                        });
+                    },
+                    error: function() {
+                        appendBotMessage("Sorry, something went wrong. Please try again.");
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
